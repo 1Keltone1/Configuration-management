@@ -1,206 +1,271 @@
-import tkinter as tk
-from tkinter import scrolledtext, Entry, Frame
+#!/usr/bin/env python3
+"""
+VFS Emulator - Stage 2: Configuration
+Enhanced with command line parameters and startup scripts
+"""
+
+import sys
+import os
+import argparse
+
+class VFSConfig:
+    """Configuration class for VFS Emulator"""
+    
+    def __init__(self):
+        self.vfs_path = None
+        self.startup_script = None
+        self.debug_mode = False
+        
+    def parse_arguments(self):
+        """Parse command line arguments"""
+        parser = argparse.ArgumentParser(
+            description='VFS Emulator - Virtual File System Emulator',
+            epilog='Example: python main.py --vfs ./vfs.xml --script startup.txt --debug'
+        )
+        
+        parser.add_argument(
+            '--vfs', 
+            dest='vfs_path',
+            metavar='PATH',
+            help='Path to VFS physical location (XML file)'
+        )
+        
+        parser.add_argument(
+            '--script', 
+            dest='startup_script',
+            metavar='SCRIPT',
+            help='Path to startup script'
+        )
+        
+        parser.add_argument(
+            '--debug',
+            action='store_true',
+            help='Enable debug output'
+        )
+        
+        args = parser.parse_args()
+        
+        self.vfs_path = args.vfs_path
+        self.startup_script = args.startup_script
+        self.debug_mode = args.debug
+        
+        # Debug output of all parameters
+        if self.debug_mode:
+            self._print_debug_info()
+        
+        return self
+    
+    def _print_debug_info(self):
+        """Print debug information about configuration"""
+        print("=== VFS Emulator Configuration ===")
+        print(f"VFS Path: {self.vfs_path}")
+        print(f"Startup Script: {self.startup_script}")
+        print(f"Debug Mode: {self.debug_mode}")
+        print("==================================")
+
+class ScriptRunner:
+    """Class for executing startup scripts"""
+    
+    def __init__(self, config):
+        self.config = config
+        
+    def execute_script(self, script_path):
+        """Execute startup script with comment support"""
+        if not os.path.exists(script_path):
+            print(f"Error: Script file not found: {script_path}")
+            return False
+            
+        try:
+            with open(script_path, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                
+            print(f"\n=== Executing startup script: {script_path} ===\n")
+            
+            line_number = 0
+            for line in lines:
+                line_number += 1
+                original_line = line.rstrip()
+                line = line.strip()
+                
+                # Skip empty lines and comments
+                if not line:
+                    continue
+                if line.startswith('#'):
+                    if self.config.debug_mode:
+                        print(f"[DEBUG] Line {line_number}: Comment - {line}")
+                    continue
+                
+                # Display the command being executed (simulate user input)
+                print(f"$ {original_line}")
+                
+                # Execute the command
+                success = self._execute_command(line)
+                if not success:
+                    print(f"Error in script at line {line_number}: {line}")
+                    return False
+                    
+                print()  # Empty line for readability
+                
+            print(f"=== Script execution completed: {script_path} ===\n")
+            return True
+            
+        except Exception as e:
+            print(f"Error reading script {script_path}: {str(e)}")
+            return False
+    
+    def _execute_command(self, command_line):
+        """Execute a single command (stub implementation)"""
+        # This is a simplified version - in real implementation
+        # this would call the actual command processor
+        parts = command_line.split()
+        if not parts:
+            return True
+            
+        command = parts[0].lower()
+        args = parts[1:]
+        
+        if command == "pwd":
+            print("/home/user")
+        elif command == "ls":
+            if args:
+                print(f"Command: ls, Arguments: {args}")
+            print("file1.txt  file2.txt  documents/  downloads/")
+        elif command == "cd":
+            if args:
+                print(f"Changing directory to: {args[0]}")
+            else:
+                print("Changing to home directory")
+        elif command == "config":
+            print("Current configuration:")
+            print(f"  VFS Path: {self.config.vfs_path or 'Not specified'}")
+            print(f"  Startup Script: {self.config.startup_script or 'Not specified'}")
+        elif command == "echo":
+            print(' '.join(args))
+        else:
+            print(f"Command executed: {command_line}")
+            
+        return True
 
 class VFSEmulator:
-    def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("VFS Emulator v1.0")
-        self.setup_ui()
+    """Main VFS Emulator class"""
+    
+    def __init__(self, config):
+        self.config = config
+        self.script_runner = ScriptRunner(config)
         self.current_directory = "/"
         
-    def setup_ui(self):
-        # Main output area
-        self.output_area = scrolledtext.ScrolledText(
-            self.root, 
-            wrap=tk.WORD,
-            width=80,
-            height=25,
-            bg='black',
-            fg='white',
-            insertbackground='white',
-            font=('Courier New', 10)
-        )
-        self.output_area.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
-        self.output_area.config(state=tk.DISABLED)
+    def run(self):
+        """Main execution loop"""
+        print("VFS Emulator v2.0 - Configuration Stage")
+        print("=" * 50)
         
-        # Command input area
-        input_frame = Frame(self.root)
-        input_frame.pack(padx=10, pady=(0, 10), fill=tk.X)
+        # Execute startup script if specified
+        if self.config.startup_script:
+            if not self.script_runner.execute_script(self.config.startup_script):
+                print("Failed to execute startup script. Starting interactive mode...")
         
-        self.prompt_label = tk.Label(
-            input_frame, 
-            text="$", 
-            bg='black', 
-            fg='green',
-            font=('Courier New', 10, 'bold')
-        )
-        self.prompt_label.pack(side=tk.LEFT)
+        # Start interactive mode
+        self._interactive_mode()
+    
+    def _interactive_mode(self):
+        """Interactive command loop"""
+        print("Interactive mode. Type 'help' for commands, 'exit' to quit.")
+        print("-" * 50)
         
-        self.command_entry = Entry(
-            input_frame,
-            bg='black',
-            fg='white',
-            insertbackground='white',
-            font=('Courier New', 10),
-            width=70
-        )
-        self.command_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
-        self.command_entry.bind('<Return>', self.execute_command)
-        self.command_entry.focus()
-        
-        # Welcome message
-        self.print_output("VFS Emulator v1.0 - Virtual File System Emulator\n")
-        self.print_output("Type 'exit' to quit, 'help' for available commands\n")
-        self.update_prompt()
-        
-    def update_prompt(self):
-        self.prompt_label.config(text=f"{self.current_directory}$")
-        
-    def print_output(self, text):
-        self.output_area.config(state=tk.NORMAL)
-        self.output_area.insert(tk.END, text)
-        self.output_area.see(tk.END)
-        self.output_area.config(state=tk.DISABLED)
-        
-    def parse_command(self, command_string):
-        """Command parser - splits input into command and arguments by spaces"""
-        if not command_string.strip():
-            return "", []
-            
-        # Split by spaces, considering quotes
-        parts = []
-        current_part = ""
-        in_quotes = False
-        quote_char = None
-        
-        for char in command_string:
-            if char in ['"', "'"]:
-                if not in_quotes:
-                    in_quotes = True
-                    quote_char = char
-                elif char == quote_char:
-                    in_quotes = False
-                    quote_char = None
-                else:
-                    current_part += char
-            elif char == ' ' and not in_quotes:
-                if current_part:
-                    parts.append(current_part)
-                    current_part = ""
-            else:
-                current_part += char
+        while True:
+            try:
+                command = input(f"{self.current_directory}$ ").strip()
                 
-        if current_part:
-            parts.append(current_part)
-            
-        if len(parts) == 0:
-            return "", []
-            
-        command = parts[0]
-        args = parts[1:] if len(parts) > 1 else []
+                if not command:
+                    continue
+                    
+                if command.lower() == 'exit':
+                    print("Exiting VFS Emulator...")
+                    break
+                elif command.lower() == 'help':
+                    self._show_help()
+                else:
+                    self._execute_interactive_command(command)
+                    
+            except KeyboardInterrupt:
+                print("\nUse 'exit' to quit")
+            except EOFError:
+                print("\nExiting...")
+                break
+    
+    def _show_help(self):
+        """Show available commands"""
+        help_text = """
+Available commands:
+  pwd          - Print current directory
+  ls [path]    - List directory contents
+  cd [dir]     - Change directory
+  config       - Show current configuration
+  echo [text]  - Display text
+  help         - Show this help message
+  exit         - Exit the emulator
+"""
+        print(help_text)
+    
+    def _execute_interactive_command(self, command_line):
+        """Execute a command in interactive mode"""
+        parts = command_line.split()
+        command = parts[0].lower()
+        args = parts[1:]
         
-        return command, args
-        
-    def execute_command(self, event=None):
-        command_string = self.command_entry.get().strip()
-        self.command_entry.delete(0, tk.END)
-        
-        # Display entered command
-        self.print_output(f"{self.current_directory}$ {command_string}\n")
-        
-        if not command_string:
-            return
-            
-        command, args = self.parse_command(command_string)
-        command = command.lower()
-        
-        # Command processing
-        if command == "exit":
-            self.root.quit()
-            
+        if command == "pwd":
+            print(self.current_directory)
         elif command == "ls":
-            self.cmd_ls(args)
-            
+            print(f"Command: ls, Arguments: {args}")
+            print("file1.txt  file2.txt  documents/  downloads/")
         elif command == "cd":
-            self.cmd_cd(args)
-            
-        elif command == "help":
-            self.cmd_help()
-            
-        elif command == "pwd":
-            self.cmd_pwd()
-            
-        else:
-            self.print_output(f"Error: Unknown command '{command}'\n")
-            
-        self.update_prompt()
-        
-    def cmd_ls(self, args):
-        """ls command - stub"""
-        self.print_output(f"Command: ls, Arguments: {args}\n")
-        self.print_output("file1.txt  file2.txt  directory1/\n")
-        
-    def cmd_cd(self, args):
-        """cd command - stub"""
-        self.print_output(f"Command: cd, Arguments: {args}\n")
-        
-        if len(args) == 0:
-            # cd without arguments - go to home directory
-            self.current_directory = "/"
-            self.print_output("Changed to root directory\n")
-        elif len(args) == 1:
-            if args[0] == "..":
-                # Go up one level
+            if not args:
+                self.current_directory = "/"
+                print("Changed to root directory")
+            elif args[0] == "..":
+                # Simple parent directory handling
                 if self.current_directory != "/":
                     parts = self.current_directory.rstrip('/').split('/')
                     if len(parts) > 1:
                         self.current_directory = '/'.join(parts[:-1]) + '/'
                         if self.current_directory == "":
                             self.current_directory = "/"
-                    else:
-                        self.current_directory = "/"
-                self.print_output(f"Changed to parent directory: {self.current_directory}\n")
-            elif args[0] == "/":
-                # Go to root directory
-                self.current_directory = "/"
-                self.print_output("Changed to root directory\n")
+                print(f"Changed to: {self.current_directory}")
             else:
-                # Try to go to specified directory
                 new_dir = args[0]
                 if new_dir.startswith("/"):
-                    self.current_directory = new_dir if new_dir.endswith("/") else new_dir + "/"
+                    self.current_directory = new_dir
                 else:
                     if self.current_directory == "/":
-                        self.current_directory = f"/{new_dir}/"
+                        self.current_directory = f"/{new_dir}"
                     else:
-                        self.current_directory = f"{self.current_directory}{new_dir}/"
-                self.print_output(f"Changed to directory: {self.current_directory}\n")
+                        self.current_directory = f"{self.current_directory}/{new_dir}"
+                if not self.current_directory.endswith("/"):
+                    self.current_directory += "/"
+                print(f"Changed to: {self.current_directory}")
+        elif command == "config":
+            print("Current configuration:")
+            print(f"  VFS Path: {self.config.vfs_path or 'Not specified'}")
+            print(f"  Startup Script: {self.config.startup_script or 'Not specified'}")
+            print(f"  Debug Mode: {self.config.debug_mode}")
+        elif command == "echo":
+            print(' '.join(args))
         else:
-            self.print_output("Error: cd: too many arguments\n")
-            
-    def cmd_help(self):
-        """help command - shows available commands"""
-        help_text = """
-Available commands:
-  ls [args]     - List directory contents (stub)
-  cd [dir]      - Change directory (stub)  
-  pwd           - Print current directory
-  exit          - Exit the emulator
-  help          - Show this help message
-
-"""
-        self.print_output(help_text)
-        
-    def cmd_pwd(self):
-        """pwd command - shows current directory"""
-        self.print_output(f"{self.current_directory}\n")
-        
-    def run(self):
-        self.root.mainloop()
+            print(f"Unknown command: {command}")
 
 def main():
-    emulator = VFSEmulator()
-    emulator.run()
+    """Main entry point"""
+    try:
+        # Parse command line arguments
+        config = VFSConfig().parse_arguments()
+        
+        # Create and run emulator
+        emulator = VFSEmulator(config)
+        emulator.run()
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

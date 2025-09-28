@@ -1,0 +1,26 @@
+# Test Script for VFS Emulator
+# Testing various commands and features
+
+config
+
+# Test basic commands
+pwd
+ls -l
+ls -a
+
+# Test directory navigation
+cd /var
+pwd
+cd log
+pwd
+cd ../..
+pwd
+
+# Test echo with multiple arguments
+echo "This is a test message"
+echo "Multiple" "arguments" "test"
+
+# Final configuration check
+config
+
+echo "Test script completed"

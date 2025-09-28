@@ -1,0 +1,27 @@
+# VFS Emulator Startup Script
+# This script demonstrates the script execution feature
+
+# Show current configuration
+config
+
+# Basic file system navigation
+pwd
+ls
+cd /home/user
+pwd
+ls
+
+# Navigate to documents
+cd documents
+pwd
+ls
+
+# Go back to root
+cd /
+pwd
+
+# Test echo command
+echo "Hello from startup script!"
+
+# This completes the demo
+echo "Startup script execution finished successfully"
