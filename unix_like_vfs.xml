@@ -1,0 +1,54 @@
+<vfs>
+    <directory name="bin" permissions="rwxr-xr-x" owner="root" group="root">
+        <file name="bash" permissions="rwxr-xr-x" owner="root" group="root" size="1000000">#!/bin/bash</file>
+        <file name="ls" permissions="rwxr-xr-x" owner="root" group="root" size="50000">#!/bin/ls</file>
+        <file name="cat" permissions="rwxr-xr-x" owner="root" group="root" size="45000">#!/bin/cat</file>
+    </directory>
+    
+    <directory name="etc" permissions="rwxr-xr-x" owner="root" group="root">
+        <file name="passwd" permissions="rw-r--r--" owner="root" group="root" size="500">
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+user:x:1000:1000:User:/home/user:/bin/bash
+        </file>
+        <file name="hosts" permissions="rw-r--r--" owner="root" group="root" size="200">
+127.0.0.1 localhost
+::1 localhost ip6-localhost ip6-loopback
+        </file>
+    </directory>
+    
+    <directory name="home" permissions="rwxr-xr-x" owner="root" group="root">
+        <directory name="user" permissions="rwxr-xr-x" owner="user" group="user">
+            <file name="readme.txt" permissions="rw-r--r--" owner="user" group="user" size="150">
+Welcome to VFS Emulator!
+This is your home directory.
+            </file>
+            <file name="document.pdf" permissions="rw-r--r--" owner="user" group="user" size="2048000">PDF_CONTENT</file>
+        </directory>
+        <directory name="testuser" permissions="rwxr-xr-x" owner="testuser" group="testuser">
+            <file name="file1.txt" permissions="rw-r--r--" owner="testuser" group="testuser" size="50">Test file 1</file>
+        </directory>
+    </directory>
+    
+    <directory name="var" permissions="rwxr-xr-x" owner="root" group="root">
+        <directory name="log" permissions="rwxr-xr-x" owner="root" group="root">
+            <file name="syslog" permissions="rw-r--r--" owner="root" group="root" size="15000">System log entries...</file>
+            <file name="auth.log" permissions="rw-r-----" owner="root" group="adm" size="8000">Authentication logs</file>
+        </directory>
+        <directory name="www" permissions="rwxr-xr-x" owner="www-data" group="www-data">
+            <file name="index.html" permissions="rw-r--r--" owner="www-data" group="www-data" size="2000">HTML content</file>
+        </directory>
+    </directory>
+    
+    <directory name="tmp" permissions="rwxrwxrwt" owner="root" group="root">
+        <file name="temp_file.tmp" permissions="rw-r--r--" owner="user" group="user" size="100">Temporary data</file>
+    </directory>
+    
+    <directory name="usr" permissions="rwxr-xr-x" owner="root" group="root">
+        <directory name="local" permissions="rwxr-xr-x" owner="root" group="root">
+            <directory name="bin" permissions="rwxr-xr-x" owner="root" group="root">
+                <file name="custom_app" permissions="rwxr-xr-x" owner="root" group="root" size="75000">Custom application</file>
+            </directory>
+        </directory>
+    </directory>
+</vfs>

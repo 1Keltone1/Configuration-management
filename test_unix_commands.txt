@@ -1,0 +1,80 @@
+# VFS Emulator Stage 4 Test Script
+# Testing all UNIX-like commands including ls/cd logic, uptime, and who
+
+# Show configuration and system info
+config
+uptime
+who
+
+# Test basic ls command
+echo "=== Testing ls command ==="
+pwd
+ls
+ls -l
+ls -l /
+
+# Test cd command with various scenarios
+echo "=== Testing cd command ==="
+cd /home
+pwd
+ls -l
+cd user
+pwd
+ls -l
+cd ../..
+pwd
+cd /var/log
+pwd
+ls -l
+
+# Test error handling for cd
+echo "=== Testing cd error handling ==="
+cd /nonexistent_directory
+cd /etc/passwd  # Trying to cd into a file
+
+# Test file operations
+echo "=== Testing file operations ==="
+cd /home/user
+cat readme.txt
+cd /etc
+cat passwd
+cat hosts
+
+# Test ls with different arguments
+echo "=== Testing ls with arguments ==="
+ls /home
+ls -l /home
+ls /etc
+ls -l /etc
+ls /bin
+ls -l /bin
+
+# Test relative and absolute paths
+echo "=== Testing path resolution ==="
+cd /home/user
+pwd
+cd ../../etc
+pwd
+cd ../home/./user/.
+pwd
+cd /var/../home/../etc
+pwd
+
+# Test system commands again after operations
+echo "=== Testing system commands ==="
+uptime
+who
+
+# Test error cases
+echo "=== Testing error cases ==="
+ls /invalid_path
+cat /nonexistent_file
+cd /home/invalid_user
+
+# Final status
+echo "=== Final status ==="
+pwd
+config
+vfsinfo
+
+echo "Stage 4 UNIX commands testing completed!"

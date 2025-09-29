@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-VFS Emulator - Stage 3: Virtual File System
-Enhanced with XML-based VFS loading and in-memory operations
+VFS Emulator - Stage 4: Core UNIX Commands
+Enhanced with proper ls/cd logic and new commands: uptime, who
 """
 
 import sys
@@ -10,6 +10,8 @@ import argparse
 import xml.etree.ElementTree as ET
 import base64
 from pathlib import Path
+import time
+from datetime import datetime, timedelta
 
 class VFSConfig:
     """Configuration class for VFS Emulator"""
@@ -62,25 +64,32 @@ class VFSConfig:
         """Print debug information about configuration"""
         print("=== VFS Emulator Configuration ===")
         print(f"VFS Path: {self.vfs_path}")
-        print(f"Startup Script: {self.startup_script}")
+        print(f"Startup Script: {self.config.startup_script}")
         print(f"Debug Mode: {self.debug_mode}")
         print("==================================")
 
 class VFSNode:
     """Node in the Virtual File System"""
     
-    def __init__(self, name, node_type, content=None):
+    def __init__(self, name, node_type, content=None, permissions="rw-r--r--", owner="user", group="users", size=0):
         self.name = name
         self.type = node_type  # 'file' or 'directory'
-        self.content = content  # For files: text content or base64 data
+        self.content = content
         self.children = {} if node_type == 'directory' else None
         self.parent = None
+        self.permissions = permissions
+        self.owner = owner
+        self.group = group
+        self.size = size
+        self.created_time = time.time()
+        self.modified_time = time.time()
     
     def add_child(self, node):
         """Add a child node to directory"""
         if self.type == 'directory':
             node.parent = self
             self.children[node.name] = node
+            self.modified_time = time.time()
         else:
             raise ValueError("Can only add children to directories")
     
@@ -88,19 +97,64 @@ class VFSNode:
         """Get full path of this node"""
         path_parts = []
         current = self
-        while current:
+        while current and current.name:  # Останавливаемся на корне (у него name='')
             path_parts.append(current.name)
             current = current.parent
-        return '/' + '/'.join(reversed(path_parts[1:]))  # Skip root node name
+        
+        if not path_parts:
+            return "/"
+        
+        return '/' + '/'.join(reversed(path_parts))
+    
+    def get_detailed_info(self):
+        """Get detailed file information for ls -l"""
+        if self.type == 'directory':
+            perm = "d" + self.permissions
+            size = 4096  # Standard directory size
+        else:
+            perm = "-" + self.permissions
+            size = len(self.content) if self.content else self.size
+            
+        # Format time (show only month, day and time if current year, else year)
+        mod_time = datetime.fromtimestamp(self.modified_time)
+        now = datetime.now()
+        if mod_time.year == now.year:
+            time_str = mod_time.strftime("%b %d %H:%M")
+        else:
+            time_str = mod_time.strftime("%b %d  %Y")
+            
+        return f"{perm} {self.owner:>8} {self.group:>8} {size:>8} {time_str} {self.name}"
 
 class VirtualFileSystem:
     """Virtual File System implementation"""
     
     def __init__(self, config):
         self.config = config
-        self.root = VFSNode('', 'directory')
+        self.root = VFSNode('', 'directory', permissions="rwxr-xr-x", owner="root", group="root")
         self.current_directory = self.root
         self.loaded = False
+        self.start_time = time.time()
+        
+        # Create default structure if no VFS loaded
+        self._create_default_structure()
+    
+    def _create_default_structure(self):
+        """Create default file system structure"""
+        # Create basic UNIX-like structure
+        bin_dir = VFSNode("bin", "directory", permissions="rwxr-xr-x", owner="root", group="root")
+        home_dir = VFSNode("home", "directory", permissions="rwxr-xr-x", owner="root", group="root")
+        etc_dir = VFSNode("etc", "directory", permissions="rwxr-xr-x", owner="root", group="root")
+        tmp_dir = VFSNode("tmp", "directory", permissions="rwxrwxrwt", owner="root", group="root")
+        
+        self.root.add_child(bin_dir)
+        self.root.add_child(home_dir)
+        self.root.add_child(etc_dir)
+        self.root.add_child(tmp_dir)
+        
+        # Add some default files
+        passwd_file = VFSNode("passwd", "file", "root:x:0:0:root:/root:/bin/bash\nuser:x:1000:1000:User:/home/user:/bin/bash", 
+                             permissions="rw-r--r--", owner="root", group="root", size=100)
+        etc_dir.add_child(passwd_file)
     
     def load_from_xml(self, xml_path):
         """Load VFS from XML file"""
@@ -114,6 +168,8 @@ class VirtualFileSystem:
             if root_element.tag != 'vfs':
                 raise ValueError("Invalid VFS format: root element must be 'vfs'")
             
+            # Clear default structure
+            self.root.children = {}
             self._parse_directory(self.root, root_element)
             self.loaded = True
             
@@ -136,7 +192,11 @@ class VirtualFileSystem:
                 if not dir_name:
                     raise ValueError("Directory missing 'name' attribute")
                 
-                dir_node = VFSNode(dir_name, 'directory')
+                permissions = child.get('permissions', 'rwxr-xr-x')
+                owner = child.get('owner', 'user')
+                group = child.get('group', 'users')
+                
+                dir_node = VFSNode(dir_name, 'directory', permissions=permissions, owner=owner, group=group)
                 parent_node.add_child(dir_node)
                 self._parse_directory(dir_node, child)
                 
@@ -156,7 +216,12 @@ class VirtualFileSystem:
                     except Exception as e:
                         raise ValueError(f"Invalid base64 content in file {file_name}: {e}")
                 
-                file_node = VFSNode(file_name, 'file', content)
+                permissions = child.get('permissions', 'rw-r--r--')
+                owner = child.get('owner', 'user')
+                group = child.get('group', 'users')
+                size = int(child.get('size', len(content)))
+                
+                file_node = VFSNode(file_name, 'file', content, permissions=permissions, owner=owner, group=group, size=size)
                 parent_node.add_child(file_node)
     
     def resolve_path(self, path):
@@ -186,7 +251,7 @@ class VirtualFileSystem:
         
         return current
     
-    def list_directory(self, path=None):
+    def list_directory(self, path=None, detailed=False):
         """List contents of a directory"""
         target_dir = self.resolve_path(path) if path else self.current_directory
         if not target_dir:
@@ -194,17 +259,41 @@ class VirtualFileSystem:
         if target_dir.type != 'directory':
             return None, f"Not a directory: {path}"
         
-        items = []
-        for name, node in target_dir.children.items():
-            if node.type == 'directory':
-                items.append(f"{name}/")
-            else:
-                items.append(name)
-        
-        return sorted(items), None
+        if detailed:
+            # Detailed listing with -l format
+            items = []
+            # Add parent directory entry
+            if target_dir != self.root:
+                parent_info = VFSNode("..", "directory", permissions="rwxr-xr-x", owner="root", group="root")
+                items.append(parent_info.get_detailed_info())
+            
+            for name, node in sorted(target_dir.children.items()):
+                items.append(node.get_detailed_info())
+            
+            return items, None
+        else:
+            # Simple listing
+            items = []
+            for name, node in sorted(target_dir.children.items()):
+                if node.type == 'directory':
+                    items.append(f"{name}/")
+                else:
+                    items.append(name)
+            
+            return items, None
     
     def change_directory(self, path):
         """Change current directory"""
+        if not path:
+            # cd without arguments goes to home directory
+            home_dir = self.resolve_path("/home/user")
+            if home_dir:
+                self.current_directory = home_dir
+                return None
+            else:
+                self.current_directory = self.root
+                return None
+        
         target_dir = self.resolve_path(path)
         if not target_dir:
             return f"Directory not found: {path}"
@@ -227,6 +316,25 @@ class VirtualFileSystem:
             return None, f"Not a file: {path}"
         
         return file_node.content, None
+    
+    def get_uptime(self):
+        """Get system uptime"""
+        uptime_seconds = time.time() - self.start_time
+        days = int(uptime_seconds // 86400)
+        hours = int((uptime_seconds % 86400) // 3600)
+        minutes = int((uptime_seconds % 3600) // 60)
+        seconds = int(uptime_seconds % 60)
+        
+        return days, hours, minutes, seconds
+    
+    def get_who_info(self):
+        """Get who information (logged in users)"""
+        # Simulate logged in users
+        users = [
+            {"user": "user", "terminal": "tty1", "login_time": "10:30", "host": ""},
+            {"user": "root", "terminal": "pts/0", "login_time": "09:15", "host": "192.168.1.100"},
+        ]
+        return users
 
 class ScriptRunner:
     """Class for executing startup scripts"""
@@ -298,13 +406,13 @@ class VFSEmulator:
     
     def run(self):
         """Main execution loop"""
-        print("VFS Emulator v3.0 - Virtual File System")
+        print("VFS Emulator v4.0 - Core UNIX Commands")
         print("=" * 50)
         
         if self.vfs.loaded:
             print(f"VFS: {self.config.vfs_path}")
         else:
-            print("VFS: Not loaded (using default empty filesystem)")
+            print("VFS: Default structure (no external VFS loaded)")
         
         # Execute startup script if specified
         if self.config.startup_script:
@@ -321,7 +429,8 @@ class VFSEmulator:
         
         while True:
             try:
-                command = input(f"{self.vfs.get_current_path()}$ ").strip()
+                current_path = self.vfs.get_current_path()
+                command = input(f"{current_path}$ ").strip()
                 
                 if not command:
                     continue
@@ -344,15 +453,18 @@ class VFSEmulator:
         """Show available commands"""
         help_text = """
 Available commands:
-  pwd          - Print current directory
-  ls [path]    - List directory contents
-  cd [dir]     - Change directory
-  cat [file]   - Display file content
-  config       - Show current configuration
-  vfsinfo      - Show VFS information
-  echo [text]  - Display text
-  help         - Show this help message
-  exit         - Exit the emulator
+  pwd               - Print current directory
+  ls [path]         - List directory contents
+  ls -l [path]      - Detailed directory listing
+  cd [dir]          - Change directory
+  cat [file]        - Display file content
+  uptime            - Show system uptime
+  who               - Show logged in users
+  config            - Show current configuration
+  vfsinfo           - Show VFS information
+  echo [text]       - Display text
+  help              - Show this help message
+  exit              - Exit the emulator
 """
         print(help_text)
     
@@ -367,18 +479,41 @@ Available commands:
         
         try:
             if command == "pwd":
-                print(self.vfs.get_current_path())
+                path = self.vfs.get_current_path()
+                print(path)
                 
             elif command == "ls":
-                path = args[0] if args else None
-                items, error = self.vfs.list_directory(path)
-                if error:
-                    print(f"ls: {error}")
+                detailed = False
+                path = None
+                
+                # Parse arguments
+                i = 0
+                while i < len(args):
+                    if args[i] == '-l':
+                        detailed = True
+                    elif not args[i].startswith('-'):
+                        path = args[i]
+                    i += 1
+                
+                if detailed:
+                    items, error = self.vfs.list_directory(path, detailed=True)
+                    if error:
+                        print(f"ls: {error}")
+                    else:
+                        # Print detailed listing
+                        total_blocks = len(items)  # Simplified block count
+                        print(f"total {total_blocks}")
+                        for item in items:
+                            print(item)
                 else:
-                    print('  '.join(items))
-                    
+                    items, error = self.vfs.list_directory(path)
+                    if error:
+                        print(f"ls: {error}")
+                    else:
+                        print('  '.join(items))
+                        
             elif command == "cd":
-                path = args[0] if args else "/"
+                path = args[0] if args else None
                 error = self.vfs.change_directory(path)
                 if error:
                     print(f"cd: {error}")
@@ -393,6 +528,21 @@ Available commands:
                     else:
                         print(content)
                         
+            elif command == "uptime":
+                days, hours, minutes, seconds = self.vfs.get_uptime()
+                if days > 0:
+                    print(f" up {days} day(s), {hours:02d}:{minutes:02d}:{seconds:02d}")
+                else:
+                    print(f" up {hours:02d}:{minutes:02d}:{seconds:02d}")
+                    
+            elif command == "who":
+                users = self.vfs.get_who_info()
+                for user_info in users:
+                    line = f"{user_info['user']:8} {user_info['terminal']:8} {user_info['login_time']:5}"
+                    if user_info['host']:
+                        line += f" ({user_info['host']})"
+                    print(line)
+                        
             elif command == "config":
                 print("Current configuration:")
                 print(f"  VFS Path: {self.config.vfs_path or 'Not specified'}")
@@ -404,12 +554,11 @@ Available commands:
                 if self.vfs.loaded:
                     print("VFS Information:")
                     print(f"  Source: {self.config.vfs_path}")
-                    # Count files and directories
                     file_count, dir_count = self._count_vfs_items(self.vfs.root)
                     print(f"  Directories: {dir_count}")
                     print(f"  Files: {file_count}")
                 else:
-                    print("VFS not loaded")
+                    print("VFS: Default structure")
                     
             elif command == "echo":
                 print(' '.join(args))
