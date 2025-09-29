@@ -1,0 +1,40 @@
+<vfs>
+    <directory name="root">
+        <file name="system.info">System Information</file>
+        <directory name="usr">
+            <directory name="local">
+                <directory name="bin">
+                    <file name="app">Binary application</file>
+                    <file name="config">Configuration file</file>
+                </directory>
+                <directory name="share">
+                    <file name="data.dat">Shared data</file>
+                </directory>
+            </directory>
+        </directory>
+        <directory name="var">
+            <directory name="log">
+                <directory name="app">
+                    <file name="app.log">Application logs</file>
+                    <file name="error.log">Error logs</file>
+                </directory>
+                <file name="system.log">System logs</file>
+            </directory>
+        </directory>
+        <directory name="home">
+            <directory name="users">
+                <directory name="alice">
+                    <file name="documents">
+                        <![CDATA[Alice's documents]]>
+                    </file>
+                    <file name="pictures">
+                        <![CDATA[Picture data in base64 would go here]]>
+                    </file>
+                </directory>
+                <directory name="bob">
+                    <file name="work">Work files</file>
+                </directory>
+            </directory>
+        </directory>
+    </directory>
+</vfs>

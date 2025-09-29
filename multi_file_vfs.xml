@@ -1,0 +1,15 @@
+<vfs>
+    <directory name="bin">
+        <file name="ls">#!/bin/bash&#10;echo "file1 file2 dir1"</file>
+        <file name="cat">#!/bin/bash&#10;echo "File content"</file>
+    </directory>
+    <directory name="home">
+        <directory name="user">
+            <file name="document.txt">This is a text document.</file>
+            <file name="notes.md"># Notes&#10;- Note 1&#10;- Note 2</file>
+        </directory>
+    </directory>
+    <directory name="tmp">
+        <file name="temp.log">Log file content</file>
+    </directory>
+</vfs>

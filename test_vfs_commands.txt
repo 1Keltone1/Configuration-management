@@ -1,0 +1,55 @@
+# VFS Emulator Stage 3 Test Script
+# Testing all commands with VFS integration
+
+# Show configuration
+config
+
+# Show VFS information
+vfsinfo
+
+# Basic navigation
+pwd
+ls
+ls /
+
+# Navigate through directories
+cd /usr/local/bin
+pwd
+ls
+
+cd ../..
+pwd
+
+cd /home/users/alice
+pwd
+ls
+
+# File operations
+cat documents
+cat /root/system.info
+
+# Error handling tests
+cd /nonexistent
+ls /invalid/path
+cat missing_file.txt
+cd /root/system.info
+
+# Return to root and show structure
+cd /
+pwd
+ls -la
+
+# Test relative paths
+cd home/users
+pwd
+cd bob
+pwd
+cd ../alice
+pwd
+cd ../../..
+pwd
+
+# Final VFS info
+vfsinfo
+
+echo "VFS testing completed successfully!"

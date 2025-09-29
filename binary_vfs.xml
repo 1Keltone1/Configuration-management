@@ -1,0 +1,7 @@
+<vfs>
+    <directory name="data">
+        <file name="text_file.txt">This is a regular text file.</file>
+        <file name="binary_data.bin" encoding="base64">SGVsbG8gVkZTIEVtdWxhdG9yIQ==</file>
+        <file name="image.png" encoding="base64">iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==</file>
+    </directory>
+</vfs>
